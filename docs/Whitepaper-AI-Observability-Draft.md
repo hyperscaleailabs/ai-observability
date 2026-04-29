@@ -167,7 +167,7 @@ Examples:
 
 ## Observability Architecture
 
-To improve reliability, a lightweight observability harness was designed around the following control loop:
+To improve reliability, a lightweight observability protocol was designed around the following control loop:
 
 **observe → detect → intervene → stabilize → measure**
 

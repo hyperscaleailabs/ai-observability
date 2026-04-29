@@ -1,4 +1,4 @@
-# case-study-ai-observability
+# Production AI/LLM Systems and Platforms: AI Observability, Validation, Failure Recovery Case Study
 ---
 
 Author: Constantine (Kostyantyn) Gurnov
@@ -6,8 +6,6 @@ Org: Hyperscale.AI
 Version: 0.1 Apr 28, 2026
 
 ---
-
-Production AI/LLM Systems and Platforms: AI Observability, Validation, Failure Recovery Case Study
 
 ## Executive Summary
 
