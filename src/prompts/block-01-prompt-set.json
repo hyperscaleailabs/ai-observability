@@ -1,9 +1,0 @@
-{
-  "prompt-set": [
-      "Explain what AI observability is in 2 sentences.",
-      "Define AI observability for a non-technical manager.",
-      "List 3 risks of not monitoring LLM systems.",
-      "Return a JSON object with keys: concept, risks, benefit.",
-      "Summarize why tracing matters in LLM pipelines in one sentence."
-  ]
-}

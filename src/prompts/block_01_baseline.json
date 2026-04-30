@@ -1,0 +1,12 @@
+{
+  "code": "block_01_baseline",
+  "prompts": [
+    {
+      "prompt": "Explain what AI observability is in 2 sentences.",
+      "system_message": null,
+      "description": "simple baseline for initial estimates",
+      "runs": 1,
+      "validators": []
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "code": "block_02_multiple prompts",
+  "description": "Multiple prompts to detect failures the issues",
+  "prompts": [
+    {
+      "prompt": "Explain what AI observability is in 2 sentences.",
+      "system_message": null,
+      "runs": 1,
+      "validators": []
+    },
+  {
+      "prompt": "Define AI observability for a non-technical manager.",
+      "system_message": null,
+      "runs": 1,
+      "validators": ["validate_output_min_length_20"]
+    },
+  {
+      "prompt": "List 3 risks of not monitoring LLM systems.",
+      "system_message": null,
+      "runs": 1,
+      "validators": ["validate_output_min_length_20"]
+    },
+  {
+      "prompt": "Return a JSON object with keys: concept, risks, benefit.",
+      "system_message": null,
+      "runs": 1,
+      "validators": ["validate_output_json_object", "validate_output_json_schema"]
+    },
+      {
+      "prompt": "Summarize why tracing matters in LLM pipelines in one sentence.",
+      "system_message": null,
+      "runs": 1,
+      "validators": ["validate_output_sentences_1"]
+    }
+  ]
+}
