@@ -43,6 +43,14 @@ The goal of this paper is practical: to help engineering teams safely scale LLM-
   * Microservice
   * Analysis Notebook
 
+* Data Artifacts, Logs, Schemas
+  * sample logs are representative excerpts
+  * full raw run history was kept separately during experimentation
+  * published samples were sanitized
+  * **Code and curated evidence** → repo
+  * **Raw experiment history** → separate archive
+  * **Narrative and results** → case study writeup
+
 ---
 
 Author: Constantine (Kostyantyn) Gurnov
