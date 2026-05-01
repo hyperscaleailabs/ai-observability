@@ -219,10 +219,11 @@ Initial prototype runs indicate a consistent pattern common to many LLM systems:
 ### Draft Placeholder Metrics
 
 | Scenario              | Success Rate | Avg Latency |
-| --------------------- | -----------: | ----------: |
-| Baseline              |     [INSERT] |    [INSERT] |
-| Prompt Hardened       |     [INSERT] |    [INSERT] |
-| Validation + Recovery |     [INSERT] |    [INSERT] |
+| --------------------- |-------------:|------------:|
+| Baseline              |    71.428571 |     2.46715 |
+| Prompt Hardened       |    90.00000  |     1.85313 |
+| Validation + Recovery |    100.00000 |     2.14986 |
+
 
 ### Example Reliability Progression
 

@@ -3,6 +3,7 @@
 **/*.drawio.bkp
 **/.ipynb_checkpoints
 **/.DS_Store
+logs/system/*.log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
