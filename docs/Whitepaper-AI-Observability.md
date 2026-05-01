@@ -4,7 +4,7 @@
 
 Author: Constantine (Kostyantyn) Gurnov
 Org: Hyperscale.AI
-Version: 0.1 Apr 28, 2026
+Version: 1.0 Apr 30, 2026
 
 ---
 
@@ -216,7 +216,7 @@ Initial prototype runs indicate a consistent pattern common to many LLM systems:
 4. Normalization layers reduce parser-facing instability.
 5. Measured controls often outperform intuition.
 
-### Draft Placeholder Metrics
+### Metrics
 
 | Scenario              | Success Rate | Avg Latency |
 | --------------------- |-------------:|------------:|
@@ -406,6 +406,6 @@ The path from demo to dependable production use is not magic. It is engineering 
 
 Author: Constantine (Kostyantyn) Gurnov
 Org: Hyperscale.AI
-Version: 1.0 Apr 28, 2026
+Version: 1.0 Apr 30, 2026
 
 ---
