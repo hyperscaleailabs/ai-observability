@@ -4,7 +4,7 @@
 
 Author: Constantine (Kostyantyn) Gurnov
 Org: Hyperscale.AI
-Version: 0.1 Apr 28, 2026
+Version: 1.0 Apr 30, 2026
 
 ---
 
@@ -167,7 +167,7 @@ Examples:
 
 ## Observability Architecture
 
-To improve reliability, a lightweight observability harness was designed around the following control loop:
+To improve reliability, a lightweight observability protocol was designed around the following control loop:
 
 **observe → detect → intervene → stabilize → measure**
 
@@ -216,13 +216,14 @@ Initial prototype runs indicate a consistent pattern common to many LLM systems:
 4. Normalization layers reduce parser-facing instability.
 5. Measured controls often outperform intuition.
 
-### Draft Placeholder Metrics
+### Metrics
 
 | Scenario              | Success Rate | Avg Latency |
-| --------------------- | -----------: | ----------: |
-| Baseline              |     [INSERT] |    [INSERT] |
-| Prompt Hardened       |     [INSERT] |    [INSERT] |
-| Validation + Recovery |     [INSERT] |    [INSERT] |
+| --------------------- |-------------:|------------:|
+| Baseline              |    71.428571 |     2.46715 |
+| Prompt Hardened       |    90.00000  |     1.85313 |
+| Validation + Recovery |    100.00000 |     2.14986 |
+
 
 ### Example Reliability Progression
 
@@ -405,6 +406,6 @@ The path from demo to dependable production use is not magic. It is engineering 
 
 Author: Constantine (Kostyantyn) Gurnov
 Org: Hyperscale.AI
-Version: 1.0 Apr 28, 2026
+Version: 1.0 Apr 30, 2026
 
 ---

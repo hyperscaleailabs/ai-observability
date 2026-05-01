@@ -1,136 +1,66 @@
-#!/usr/bin/env python3
+from pathlib import Path
+import pandas as pd
 
-import argparse
-import datetime as dt
 import json
 import logging
 import os
+import datetime as dt
 import time
 import uuid
-from pathlib import Path
-from typing import Any
-
 from dotenv import load_dotenv
+
+load_dotenv(".env.local")
+
+SESSION_ID = f'{dt.datetime.now().strftime("%Y-%m-%d")}/{time.time_ns()}-{uuid.uuid4()}'
+
+LOGS_ROOT_DIR = os.environ['LOGS_ROOT_DIR']
+assert LOGS_ROOT_DIR, 'LOGS_ROOT_DIR env variable is not set. Please configure .env.local file'
+
+LOGS_SESSION_DIR = os.path.join(LOGS_ROOT_DIR, SESSION_ID)
+os.makedirs(LOGS_SESSION_DIR, exist_ok=True)
+
+#
+# logging.basicConfig(level=logging.INFO, format='%(message)s')
+# logger = logging.getLogger("analysis")
+
+logging.basicConfig(
+    filename='logs/system/instrument.log',
+    filemode='a',
+    level=logging.INFO,
+    format='%(message)s'
+)
+
 from openai import OpenAI
+client = OpenAI()
 
-logging.basicConfig(level=logging.INFO, format="%(message)s")
+def info()  -> dict:
+    result = {
+        "instrument-name": "ai-observability",
+        "instrument-version": "0.0.1",
+        "updated": dt.datetime.fromtimestamp(Path(__file__).stat().st_mtime).strftime("%Y-%m-%d %H:%M"),
+    }
+    return result
 
+# system functions
+def call_llm(prompt: str, system_message: str = None) -> str:
+    messages = []
+    if system_message:
+        messages.append({ "role": "system", "content": system_message})
+    messages.append({"role": "user", "content": prompt})
+    response = client.chat.completions.create(model="gpt-4o-mini", messages=messages,)
+    return response.choices[0].message.content or ""
 
-DEFAULT_SYSTEM_MESSAGE = (
-    "You are a precise API that returns only raw JSON when asked for JSON. "
-    "Do not include markdown, code fences, commentary, or any extra text."
-)
+def store_log(log, experiment_name, trace_id):
+    os.makedirs(os.path.join(LOGS_SESSION_DIR, experiment_name), exist_ok=True)
+    with open(os.path.join(LOGS_SESSION_DIR, experiment_name, f'{trace_id}.json'), 'w') as f:
+        f.write(json.dumps(log, indent=2))
+        f.close()
 
-DEFAULT_PROMPT = (
-    "Return only valid JSON with exactly these top-level keys: concept, risks, benefit. "
-    "concept must be a string. risks must be an array of strings. "
-    "benefit must be an array of strings."
-)
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Lightweight LLM observability harness for structured-output testing."
-    )
-    parser.add_argument(
-        "--runs",
-        type=int,
-        default=3,
-        help="Number of repeated runs for each prompt.",
-    )
-    parser.add_argument(
-        "--model",
-        type=str,
-        default="gpt-4o-mini",
-        help="Model name to use.",
-    )
-    parser.add_argument(
-        "--mode",
-        type=str,
-        default="json",
-        choices=["json", "general"],
-        help="Validation mode.",
-    )
-    parser.add_argument(
-        "--prompt-file",
-        type=str,
-        default=None,
-        help="Path to a prompt text file. If omitted, uses built-in default prompt.",
-    )
-    parser.add_argument(
-        "--system-file",
-        type=str,
-        default=None,
-        help="Path to a system message text file. If omitted, uses built-in default system message.",
-    )
-    parser.add_argument(
-        "--logs-root",
-        type=str,
-        default=None,
-        help="Directory to store logs. Falls back to LOGS_ROOT_DIR env var, then ./logs",
-    )
-    parser.add_argument(
-        "--session-name",
-        type=str,
-        default=None,
-        help="Optional session name. If omitted, one is generated automatically.",
-    )
-    parser.add_argument(
-        "--note",
-        type=str,
-        default="Block 3 repeated JSON reliability test",
-        help="Optional note stored in the summary.",
-    )
-    parser.add_argument(
-        "--env-file",
-        type=str,
-        default=".env.local",
-        help="Path to env file for OPENAI_API_KEY and optional LOGS_ROOT_DIR.",
-    )
-    return parser.parse_args()
+def new_trace_id():
+    return f'{time.time_ns()}-{uuid.uuid4()}'
 
 
-def load_text_file(path: str | None, fallback: str) -> str:
-    if not path:
-        return fallback
-    return Path(path).read_text(encoding="utf-8").strip()
-
-
-def build_prompts(prompt_text: str, runs: int) -> list[str]:
-    return [prompt_text for _ in range(runs)]
-
-
-def resolve_logs_root(cli_value: str | None) -> Path:
-    if cli_value:
-        return Path(cli_value)
-    env_value = os.getenv("LOGS_ROOT_DIR")
-    if env_value:
-        return Path(env_value)
-    return Path("logs")
-
-
-def build_session_name(explicit_name: str | None) -> str:
-    if explicit_name:
-        return explicit_name
-    return f"block3-{time.time_ns()}"
-
-
-def ensure_session_dir(logs_root: Path, session_name: str) -> Path:
-    session_dir = logs_root / session_name
-    session_dir.mkdir(parents=True, exist_ok=True)
-    return session_dir
-
-
-def persist_jsonl(path: Path, record: dict[str, Any]) -> None:
-    with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
-
-
-def persist_json(path: Path, record: dict[str, Any]) -> None:
-    with path.open("w", encoding="utf-8") as f:
-        json.dump(record, f, indent=2, ensure_ascii=False)
-
-
+# Normalization
 def extract_json_candidate(output: str) -> str:
     output = output.strip()
 
@@ -145,190 +75,160 @@ def extract_json_candidate(output: str) -> str:
     end = output.rfind("}")
 
     if start != -1 and end != -1 and end > start:
-        return output[start : end + 1]
+        return output[start:end + 1]
 
     return output
 
+# Validation
+def validate(output: str, validators: list) -> list:
+    issues = []
+    for validator in validators:
+        result = globals()[validator](output)
+        if result:
+            issues += result
+    return issues
 
-def validate_output(mode: str, prompt: str, raw_output: str) -> tuple[bool, list[str], str | None]:
-    issues: list[str] = []
-    json_candidate: str | None = None
+def validate_output_sentences_1(output: str) -> list:
+    issues = []
+    sentence_count = output.count(".") + output.count("!") + output.count("?")
+    if sentence_count > 1:
+        issues.append("too_many_sentences")
+    return issues
 
-    if not raw_output.strip():
-        issues.append("empty_output")
 
-    if len(raw_output.strip()) < 20:
-        issues.append("too_short")
+def validate_output_sentences_2(output: str) -> list:
+    issues = []
+    sentence_count = output.count(".") + output.count("!") + output.count("?")
+    if sentence_count == 2:
+        issues.append("exactly_two_sentences_expected")
+    return issues
 
-    if mode == "json" or "json" in prompt.lower():
+def validate_output_max_length_30(output: str) -> list:
+    issues = []
+    if len(output) < 30:
+        issues.append("too_long")
+    return issues
+
+
+def validate_output_min_length_20(output: str) -> list:
+    issues = []
+    if len(output.strip()) < 20:
+        issues.append("too_short_must_be_20_ch_min")
+    return issues
+
+def validate_output_json_object(output: str) -> list:
+    issues = []
+    try:
+        json.loads(output)
+    except Exception as e:
         try:
-            json_candidate = extract_json_candidate(raw_output)
-            parsed = json.loads(json_candidate)
+            json.loads(extract_json_candidate(output))
+        except Exception as e:
+            issues.append(f"invalid_json: {str(e)[:10]}")
 
-            required_keys = {"concept", "risks", "benefit"}
-            if set(parsed.keys()) != required_keys:
-                issues.append("wrong_keys")
+    return issues
 
-            if not isinstance(parsed.get("concept"), str):
-                issues.append("concept_not_string")
+def validate_output_json_schema(output: str) -> list:
+    issues = []
+    try:
+        parsed = json.loads(output)
 
-            risks = parsed.get("risks")
-            if not isinstance(risks, list) or not all(isinstance(x, str) for x in risks):
-                issues.append("risks_not_string_array")
+        required_keys = {"concept", "risks", "benefit"}
+        if set(parsed.keys()) != required_keys:
+            issues.append("wrong_keys")
 
-            benefits = parsed.get("benefit")
-            if not isinstance(benefits, list) or not all(isinstance(x, str) for x in benefits):
-                issues.append("benefit_not_string_array")
+        if not isinstance(parsed.get("concept"), str):
+            issues.append("concept_not_string")
 
-        except Exception:
-            issues.append("invalid_json")
+        if not isinstance(parsed.get("risks"), list) or not all(isinstance(x, str) for x in parsed["risks"]):
+            issues.append("risks_not_string_array")
 
-    if "one sentence" in prompt.lower():
-        sentence_count = raw_output.count(".") + raw_output.count("!") + raw_output.count("?")
-        if sentence_count > 1:
-            issues.append("too_many_sentences")
+        if not isinstance(parsed.get("benefit"), list) or not all(isinstance(x, str) for x in parsed["benefit"]):
+            issues.append("benefit_not_string_array")
 
-    return (len(issues) == 0, issues, json_candidate)
+    except Exception as e:
+        issues.append("invalid_json_schema")
 
+    return issues
 
-def call_llm(client: OpenAI, model: str, system_message: str, prompt: str) -> str:
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": prompt},
-        ],
-    )
-    return response.choices[0].message.content or ""
-
-
-def run_prompt(
-    client: OpenAI,
-    model: str,
-    mode: str,
-    system_message: str,
-    prompt: str,
-    run_index: int,
-) -> dict[str, Any]:
+# Observation
+def run_prompt(prompt: str, trace_id: str, validators: list, system_message: str = None, apply_json_normalization: bool = False) -> dict:
     request_id = str(uuid.uuid4())
-    started_at = dt.datetime.now(dt.timezone.utc).isoformat()
     start_time = time.time()
 
     try:
-        raw_output = call_llm(client, model, system_message, prompt)
+        response = call_llm(prompt=prompt, system_message=system_message)
         status = "success"
-        error_message = None
     except Exception as e:
-        raw_output = ""
+        response = str(e)
         status = "error"
-        error_message = str(e)
 
-    latency = round(time.time() - start_time, 4)
-    is_valid, issues, json_candidate = validate_output(mode, prompt, raw_output)
-
-    processed_output = json_candidate if json_candidate is not None else raw_output
-
+    latency = time.time() - start_time
+    if apply_json_normalization:
+        response = extract_json_candidate(response)
+    issues = validate(response, validators)
     return {
         "request_id": request_id,
-        "run_index": run_index,
-        "timestamp_utc": started_at,
-        "mode": mode,
-        "model": model,
+        "trace_id": trace_id,
         "prompt": prompt,
+        "output": response,
+        "latency": round(latency, 4),
+        "output_length": len(response),
         "status": status,
-        "error_message": error_message,
-        "latency": latency,
-        "raw_output": raw_output,
-        "processed_output": processed_output,
-        "output_length": len(raw_output),
-        "is_valid": is_valid,
+        "is_valid": len(issues) == 0,
         "issues": issues,
     }
 
 
-def build_summary(
-    results: list[dict[str, Any]],
-    session_name: str,
-    note: str,
-    system_message: str,
-    prompt_source: str,
-    model: str,
-    mode: str,
-) -> dict[str, Any]:
-    total_runs = len(results)
-    success_count = sum(1 for r in results if r["status"] == "success")
+def run_experiment(prompts: dict) -> list:
+    results = []
+    trace_id = new_trace_id()
+    issues = []
+    data = []
+    for prompt in prompts.get("prompts", []):
+        for idx in range(prompt.get('runs')):
+            result = run_prompt(
+                prompt.get('prompt'),
+                trace_id=trace_id,
+                validators=prompt.get('validators', []),
+                system_message=prompt.get('system_message'),
+                apply_json_normalization=prompt.get('apply_json_normalization'),
+            )
+            results.append(result)
+            issues += result["issues"]
+            logging.info(json.dumps(result, indent=2))
+            data.append({
+                "scenario": prompt.get("scenario", ""),
+                "prompt": prompt.get('prompt'),
+                "trace_id": trace_id,
+                "validators": prompt.get('validators', []),
+                "system_message": prompt.get('system_message'),
+                "output": result["output"],
+                "issues": result["issues"],
+                "latency": round(result["latency"], 4),
+                "success": 1 if result["is_valid"] else 0,
+            })
     valid_count = sum(1 for r in results if r["is_valid"])
-    invalid_count = total_runs - valid_count
-    avg_latency = round(sum(r["latency"] for r in results) / total_runs, 4) if total_runs else 0.0
-    json_success_rate = round(valid_count / total_runs, 4) if total_runs else 0.0
-
-    return {
-        "session_name": session_name,
-        "timestamp_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
-        "note": note,
-        "mode": mode,
-        "model": model,
-        "prompt_source": prompt_source,
-        "system_message": system_message,
-        "total_runs": total_runs,
-        "success_count": success_count,
+    invalid_count = sum(1 for r in results if not r["is_valid"])
+    observed_issue_types = list(set(issues))
+    summary = {
+        "total_runs": len(results),
+        "success_count": sum(1 for r in results if r["status"] == "success"),
         "valid_count": valid_count,
         "invalid_count": invalid_count,
-        "avg_latency": avg_latency,
-        "json_success_rate": json_success_rate,
+        "success_percentage": (valid_count * 100.0 / len(results)),
+        "avg_latency": round(sum(r["latency"] for r in results) / len(results), 4),
+        "observed_issue_types": observed_issue_types
     }
-
-
-def main() -> None:
-    args = parse_args()
-    load_dotenv(args.env_file)
-
-    system_message = load_text_file(args.system_file, DEFAULT_SYSTEM_MESSAGE)
-    prompt_text = load_text_file(args.prompt_file, DEFAULT_PROMPT)
-    prompts = build_prompts(prompt_text, args.runs)
-
-    logs_root = resolve_logs_root(args.logs_root)
-    session_name = build_session_name(args.session_name)
-    session_dir = ensure_session_dir(logs_root, session_name)
-
-    events_path = session_dir / "events.jsonl"
-    summary_path = session_dir / "summary.json"
-
-    prompt_source = args.prompt_file if args.prompt_file else "builtin:DEFAULT_PROMPT"
-
-    client = OpenAI()
-    results: list[dict[str, Any]] = []
-
-    for idx, prompt in enumerate(prompts, start=1):
-        result = run_prompt(
-            client=client,
-            model=args.model,
-            mode=args.mode,
-            system_message=system_message,
-            prompt=prompt,
-            run_index=idx,
-        )
-        results.append(result)
-        persist_jsonl(events_path, result)
-
-        logging.info(f"\n--- RUN {idx} ---")
-        logging.info(json.dumps(result, indent=2, ensure_ascii=False))
-
-    summary = build_summary(
-        results=results,
-        session_name=session_name,
-        note=args.note,
-        system_message=system_message,
-        prompt_source=prompt_source,
-        model=args.model,
-        mode=args.mode,
-    )
-
-    persist_json(summary_path, summary)
+    pdf = pd.DataFrame(data=data)
+    trace_log = {
+        'trace_id': trace_id,
+        'runs': results,
+        'summary': summary,
+    }
+    store_log(trace_log, prompts.get('code'), trace_id=trace_id)
 
     logging.info("\nSUMMARY")
-    logging.info(json.dumps(summary, indent=2, ensure_ascii=False))
+    logging.info(json.dumps(summary, indent=2))
+    return [trace_log, pdf]
 
-
-if __name__ == "__main__":
-    main()

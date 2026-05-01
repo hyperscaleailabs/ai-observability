@@ -1,0 +1,12 @@
+{
+  "code": "block_03_03_hardened",
+  "description": "JSON request hardened with reruns",
+  "prompts": [
+    {
+      "prompt": "Return only valid JSON with exactly these top-level keys: concept, risks, benefit. concept must be a string. risks must be an array of strings. benefit must be an array of strings",
+      "system_message": null,
+      "runs": 5,
+      "validators": ["validate_output_json_object", "validate_output_json_schema"]
+    }
+  ]
+}

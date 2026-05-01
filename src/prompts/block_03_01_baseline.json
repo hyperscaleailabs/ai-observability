@@ -1,0 +1,12 @@
+{
+  "code": "block_03_01_baseline",
+  "description": "Baseline prompt for detected JSON failure issue",
+  "prompts": [
+    {
+      "prompt": "Return a JSON object with keys: concept, risks, benefit.",
+      "system_message": null,
+      "runs": 1,
+      "validators": ["validate_output_json_object", "validate_output_json_schema"]
+    }
+  ]
+}

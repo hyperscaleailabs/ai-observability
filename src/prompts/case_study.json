@@ -1,0 +1,70 @@
+{
+  "code": "block_03_05_hardened_with_schema_and_system_message_reruns",
+  "description": "JSON request hardened with reruns",
+  "prompts": [
+    {
+      "scenario": "baseline",
+      "prompt": "Explain what AI observability is in 2 sentences.",
+      "system_message": null,
+      "runs": 1,
+      "validators": []
+    },
+  {
+      "scenario": "baseline",
+      "prompt": "Define AI observability for a non-technical manager.",
+      "system_message": null,
+      "runs": 1,
+      "validators": ["validate_output_min_length_20"]
+    },
+  {
+      "scenario": "baseline",
+      "prompt": "List 3 risks of not monitoring LLM systems.",
+      "system_message": null,
+      "runs": 1,
+      "validators": ["validate_output_min_length_20"]
+    },
+  {
+      "scenario": "baseline",
+      "prompt": "Return a JSON object with keys: concept, risks, benefit.",
+      "system_message": null,
+      "runs": 1,
+      "validators": ["validate_output_json_object", "validate_output_json_schema"]
+    },
+    {
+      "scenario": "baseline",
+      "prompt": "Summarize why tracing matters in LLM pipelines in one sentence.",
+      "system_message": null,
+      "runs": 1,
+      "validators": ["validate_output_sentences_1"]
+    },
+    {
+      "scenario": "baseline",
+      "prompt": "Return a JSON object with keys: concept, risks, benefit.",
+      "system_message": null,
+      "runs": 1,
+      "validators": ["validate_output_json_object", "validate_output_json_schema"]
+    },
+    {
+      "scenario": "prompt hardened",
+      "prompt": "Return only valid JSON with exactly these top-level keys: concept, risks, benefit. concept must be a string. risks must be an array of strings. benefit must be an array of strings",
+      "system_message": null,
+      "runs": 5,
+      "validators": ["validate_output_json_object", "validate_output_json_schema"]
+    },
+    {
+      "scenario": "prompt hardened",
+      "prompt": "Return only valid JSON with exactly these top-level keys: concept, risks, benefit. concept must be a string. risks must be an array of strings. benefit must be an array of strings",
+      "system_message": "You are a precise API that returns only raw JSON when asked for JSON. Do not include markdown, code fences, commentary, or any extra text.",
+      "runs": 5,
+      "validators": ["validate_output_json_object", "validate_output_json_schema"]
+    },
+    {
+      "scenario": "validation + recovery",
+      "apply_json_normalization": true,
+      "prompt": "Return only valid JSON with exactly these top-level keys: concept, risks, benefit. concept must be a string. risks must be an array of strings. benefit must be an array of strings",
+      "system_message": "You are a precise API that returns only raw JSON when asked for JSON. Do not include markdown, code fences, commentary, or any extra text.",
+      "runs": 5,
+      "validators": ["validate_output_json_object", "validate_output_json_schema"]
+    }
+  ]
+}
